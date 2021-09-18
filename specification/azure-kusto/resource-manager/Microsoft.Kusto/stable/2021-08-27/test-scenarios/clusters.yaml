@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-rest-api-specs/main/documentation/test-scenario/references/v1.0/schema.json
+
+contentVersion: 1.0.0
+scope: ResourceGroup
+testScenarios:
+  - description: Microsoft.Kusto/clusters Clusters_CreateOrUpdate
+    steps:
+      - step: KustoClusters_CreateOrUpdate
+        exampleFile: ../examples/KustoClustersCreateOrUpdate.json
+      - step: KustoClusters_Get
+        exampleFile: ../examples/KustoClustersGet.json
+      - step: KustoClusters_Update
+        exampleFile: ../examples/KustoClustersUpdate.json
+      - step: KustoClusters_List
+        exampleFile: ../examples/KustoClustersList.json
+      - step: KustoClusters_Delete
+        exampleFile: ../examples/KustoClustersDelete.json
