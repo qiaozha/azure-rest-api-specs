@@ -25,6 +25,13 @@
       - "specification/eventgrid/data-plane/**"
     reviewers:
       - lmazuel
+      
+- rule:
+    # storage data-plane PR
+    paths:
+      - "specification/storage/data-plane/**"
+    reviewers:
+      - tg-msft
 
 - rule:
     # synapse data-plane PR
@@ -54,6 +61,7 @@
       - "specification/network/**"
     reviewers:
       - lirenhe
+      - raych1
 
 
 - rule:
@@ -64,13 +72,14 @@
       - leni-msft
       - ruowan
       - jianyexi
-      - zhenglaizhang
-      
+      - xiaoxuqi-ms
+   
       
 - rule:
-    paths: "specification/@(resources|powerplatform|appplatform|deviceupdate)/**"
+    paths: "specification/@(providerhub|sql|appplatform|deviceupdate|servicelinker)/**"
     reviewers:
       - raych1
+      - xiaoxuqi-ms
       
 - rule:
     paths: "specification/@(security|edgeorder|synapse)/**"
@@ -78,10 +87,10 @@
       - ruowan
       
 - rule:
-    paths: "specification/sql/**"
+    paths: "specification/powerplatform/**"
     reviewers:
-      - zhenglaizhang
-      
+      - honghr
+            
 - rule:
     paths: "specification/signalr/**"
     reviewers:
@@ -110,7 +119,7 @@
 
 - rule:
     paths:
-      - "specification/datafactory/**"
+      - "specification/@(resources|datafactory)/**"
     reviewers:
       - leni-msft
 
@@ -146,17 +155,20 @@
       - weidongxu-microsoft
       
 - rule:
-    paths:
-      - "specification/servicelinker/**"
+    paths: 
+      - "specification/securityinsights/**"
     reviewers:
-      - raych1
+      - dw511214992
       
+
 - rule:
     paths:
-      - "specification/keyvault/**"
+      - "specification/videoanalyzer/resource-manager/**"
+      - "specification/cognitiveservices/resource-manager/**"
+      - "specification/dataprotection/**"
     reviewers:
-      - zhenglaizhang
-
+      - xiaoxuqi-ms
+      
 - rule:
     paths:
       - "documentation/**"
@@ -175,7 +187,6 @@
     reviewers:
       - akning-ms
       - raych1
-      - zhenglaizhang
 
 - rule:
     # manager-plane PR
@@ -190,8 +201,12 @@
       - leni-msft
       - ruowan
       - jianyexi
-      - zhenglaizhang
       - chunyu3
       - changlong-liu
       - msyyc
-      - qwordy
+      - qiaozha
+      - dw511214992
+      - honghr
+      - tianxchen-ms
+      - tadelesh
+      - xiaoxuqi-ms
