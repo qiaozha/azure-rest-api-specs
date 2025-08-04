@@ -47,6 +47,7 @@ Icon
 # Ignore repo files
 /scripts/stostools/restoredPackages
 /scripts/stostools/restoredpackages
+__pycache__/
 
 # Files that might appear in the root of a volume
 .DocumentRevisions-V100
