@@ -1329,6 +1329,180 @@
           }
         }
       }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Synapse/workspaces/{workspaceName}/integrationRuntimes/{integrationRuntimeName}/start/operationstatuses/{integrationRuntimeOperationId}": {
+      "get": {
+        "operationId": "Get_IntegrationRuntimeStart",
+        "summary": "Get integration runtime start operation status",
+        "description": "Get an integration runtime start operation status",
+        "tags": [
+          "IntegrationRuntime"
+        ],
+        "deprecated": false,
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "../../../../common/v1/types.json#/parameters/WorkspaceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/IntegrationRuntimeNameParameter"
+          },
+          {
+            "name": "integrationRuntimeOperationId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Integration runtime Operation Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "schema": {
+              "$ref": "#/definitions/IntegrationRuntimeOperationStatus"
+            }
+          },
+          "default": {
+            "description": "An error response received from GET integration runtime operation.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "consumes": [],
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "Get integration runtime operation status": {
+            "$ref": "./examples/IntegrationRuntimes_Start_OperationStatus.json"
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Synapse/workspaces/{workspaceName}/integrationRuntimes/{integrationRuntimeName}/stop/operationstatuses/{integrationRuntimeOperationId}": {
+      "get": {
+        "operationId": "Get_IntegrationRuntimeStop",
+        "summary": "Get integration runtime stop operation status",
+        "description": "Get an integration runtime stop operation status",
+        "tags": [
+          "IntegrationRuntime"
+        ],
+        "deprecated": false,
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "../../../../common/v1/types.json#/parameters/WorkspaceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/IntegrationRuntimeNameParameter"
+          },
+          {
+            "name": "integrationRuntimeOperationId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Integration runtime Operation Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "schema": {
+              "$ref": "#/definitions/IntegrationRuntimeStopOperationStatus"
+            }
+          },
+          "default": {
+            "description": "An error response received from GET integration runtime operation.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "consumes": [],
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "Get integration runtime operation status": {
+            "$ref": "./examples/IntegrationRuntimes_Stop_OperationStatus.json"
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Synapse/workspaces/{workspaceName}/integrationRuntimes/{integrationRuntimeName}/enableinteractivequery/operationstatuses/{integrationRuntimeOperationId}": {
+      "get": {
+        "operationId": "Get_IntegrationRuntimeEnableInteractivequery",
+        "summary": "Get integration runtime enable interactivequery operation status",
+        "description": "Get an integration runtime enable interactivequery operation status",
+        "tags": [
+          "IntegrationRuntime"
+        ],
+        "deprecated": false,
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/SubscriptionIdParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ResourceGroupNameParameter"
+          },
+          {
+            "$ref": "../../../../common/v1/types.json#/parameters/WorkspaceNameParameter"
+          },
+          {
+            "$ref": "#/parameters/IntegrationRuntimeNameParameter"
+          },
+          {
+            "name": "integrationRuntimeOperationId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Integration runtime Operation Id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK.",
+            "schema": {
+              "$ref": "#/definitions/IntegrationRuntimeEnableinteractivequery"
+            }
+          },
+          "default": {
+            "description": "An error response received from GET integration runtime operation.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "consumes": [],
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "Get integration runtime operation status": {
+            "$ref": "./examples/EnableInteractivequery_IntegrationRuntimes.json"
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -1466,6 +1640,14 @@
         "vNetProperties": {
           "description": "VNet properties for managed integration runtime.",
           "$ref": "#/definitions/IntegrationRuntimeVNetProperties"
+        },
+        "copyComputeScaleProperties": {
+          "description": "CopyComputeScale properties for managed integration runtime.",
+          "$ref": "#/definitions/CopyComputeScaleProperties"
+        },
+        "pipelineExternalComputeScaleProperties": {
+          "description": "PipelineExternalComputeScale properties for managed integration runtime.",
+          "$ref": "#/definitions/PipelineExternalComputeScaleProperties"
         }
       },
       "additionalProperties": {
@@ -1507,6 +1689,50 @@
       },
       "additionalProperties": {
         "type": "object"
+      }
+    },
+    "CopyComputeScaleProperties": {
+      "description": "CopyComputeScale properties for managed integration runtime.",
+      "type": "object",
+      "properties": {
+        "dataIntegrationUnit": {
+          "description": "DIU number setting reserved for copy activity execution. Supported values are multiples of 4 in range 4-256.",
+          "type": "integer",
+          "format": "int32",
+          "minimum": 4
+        },
+        "timeToLive": {
+          "description": "Time to live (in minutes) setting of integration runtime which will execute copy activity.",
+          "type": "integer",
+          "format": "int32",
+          "minimum": 5
+        }
+      }
+    },
+    "PipelineExternalComputeScaleProperties": {
+      "description": "PipelineExternalComputeScale properties for managed integration runtime.",
+      "type": "object",
+      "properties": {
+        "timeToLive": {
+          "description": "Time to live (in minutes) setting of integration runtime which will execute pipeline and external activity.",
+          "type": "integer",
+          "format": "int32",
+          "minimum": 5
+        },
+        "numberOfPipelineNodes": {
+          "description": "Number of the pipeline nodes, which should be greater than 0 and less than 11.",
+          "type": "integer",
+          "format": "int32",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "numberOfExternalNodes": {
+          "description": "Number of the the external nodes, which should be greater than 0 and less than 11.",
+          "type": "integer",
+          "format": "int32",
+          "minimum": 1,
+          "maximum": 10
+        }
       }
     },
     "IntegrationRuntimeVNetProperties": {
@@ -1868,6 +2094,18 @@
         "linkedInfo": {
           "$ref": "#/definitions/LinkedIntegrationRuntimeType",
           "description": "Linked integration runtime type from data factory"
+        },
+        "selfContainedInteractiveAuthoringEnabled": {
+          "type": "boolean",
+          "description": "An alternative option to ensure interactive authoring function when your self-hosted integration runtime is unable to establish a connection with Azure Relay.",
+          "enum": [
+            true,
+            false
+          ],
+          "x-ms-enum": {
+            "name": "SelfContainedInteractiveAuthoringState",
+            "modelAsString": false
+          }
         }
       }
     },
@@ -2285,6 +2523,29 @@
           "items": {
             "description": "The newer versions",
             "type": "string"
+          }
+        },
+        "osType": {
+          "type": "integer",
+          "format": "int32",
+          "readOnly": true
+        },
+        "targetFramework": {
+          "type": "integer",
+          "format": "int32",
+          "readOnly": true
+        },
+        "selfContainedInteractiveAuthoringEnabled": {
+          "type": "boolean",
+          "readOnly": true,
+          "description": "An alternative option to ensure interactive authoring function when your self-hosted integration runtime is unable to establish a connection with Azure Relay.",
+          "enum": [
+            true,
+            false
+          ],
+          "x-ms-enum": {
+            "name": "SelfContainedInteractiveAuthoringState",
+            "modelAsString": false
           }
         }
       }
@@ -3069,6 +3330,99 @@
           "description": "The port of endpoint.",
           "type": "integer",
           "format": "int32"
+        }
+      }
+    },
+    "IntegrationRuntimeOperationStatus": {
+      "description": "Integration Runtime Operation Status Properties",
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "InProgress",
+            "Succeeded",
+            "Failed"
+          ],
+          "description": "status of Start Integrationruntimes.",
+          "type": "string",
+          "x-ms-enum": {
+            "name": "Workspace status",
+            "modelAsString": true
+          }
+        },
+        "name": {
+          "type": "string",
+          "description": "The operation name."
+        },
+        "properties": {
+          "type": "object",
+          "description": "The operation properties."
+        },
+        "error": {
+          "type": "string",
+          "description": "The operation error message."
+        }
+      }
+    },
+    "IntegrationRuntimeStopOperationStatus": {
+      "description": "Integration Runtime Operation Status Properties",
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "InProgress",
+            "Succeeded",
+            "Failed"
+          ],
+          "description": "status of Start Integrationruntimes.",
+          "type": "string",
+          "x-ms-enum": {
+            "name": "Workspace status",
+            "modelAsString": true
+          }
+        },
+        "name": {
+          "type": "string",
+          "description": "The operation name."
+        },
+        "properties": {
+          "type": "object",
+          "description": "The operation properties."
+        },
+        "error": {
+          "type": "string",
+          "description": "The operation error message."
+        }
+      }
+    },
+    "IntegrationRuntimeEnableinteractivequery": {
+      "description": "Integration Runtime Operation Status Properties",
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "InProgress",
+            "Succeeded",
+            "Failed"
+          ],
+          "description": "EnableInteractivequery status of  Integrationruntimes.",
+          "type": "string",
+          "x-ms-enum": {
+            "name": "Workspace status",
+            "modelAsString": true
+          }
+        },
+        "name": {
+          "type": "string",
+          "description": "The operation name."
+        },
+        "properties": {
+          "type": "object",
+          "description": "The operation properties."
+        },
+        "error": {
+          "type": "string",
+          "description": "The operation error message."
         }
       }
     }
