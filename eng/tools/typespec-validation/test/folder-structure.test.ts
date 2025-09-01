@@ -95,7 +95,7 @@ describe("folder-structure", function () {
 
     const result = await new FolderStructureRule().execute("/gitroot/specification/foo/data-plane");
     assert(result.errorOutput);
-    assert(result.errorOutput.includes("does not match regex"));
+    assert(result.errorOutput.includes("must be exactly 4 levels deep"));
   });
 
   it("should fail if second level folder is resource-manager", async function () {
@@ -108,7 +108,7 @@ describe("folder-structure", function () {
       "/gitroot/specification/foo/resource-manager",
     );
     assert(result.errorOutput);
-    assert(result.errorOutput.includes("does not match regex"));
+    assert(result.errorOutput.includes("must be exactly 5 levels deep"));
   });
 
   it("should fail if Shared does not follow Management ", async function () {
@@ -295,26 +295,24 @@ options:
     });
     normalizePathSpy.mockReturnValue("/gitroot");
 
-    let result = await new FolderStructureRule().execute("/gitroot/specification/foo/data-plane");
-    assert(result.errorOutput?.includes("level under"));
+    // Test data-plane with too many levels (5 instead of 4)
+    let result = await new FolderStructureRule().execute("/gitroot/specification/foo/data-plane/Foo/too-deep");
+    assert(result.errorOutput?.includes("must be exactly 4 levels deep"));
 
+    // Test resource-manager with too many levels (6 instead of 5)  
     result = await new FolderStructureRule().execute(
-      "/gitroot/specification/foo/data-plane/Foo/too-deep",
+      "/gitroot/specification/foo/resource-manager/RP.Namespace/ServiceName/too-deep",
     );
-    assert(result.errorOutput?.includes("level under"));
+    assert(result.errorOutput?.includes("5 levels or less"));
 
-    result = await new FolderStructureRule().execute("/gitroot/specification/foo/resource-manager");
-    assert(result.errorOutput?.includes("levels under"));
-
-    result = await new FolderStructureRule().execute(
-      "/gitroot/specification/foo/resource-manager/RP.Namespace",
-    );
-    assert(result.errorOutput?.includes("levels under"));
+    // Test resource-manager with too few levels (4 instead of 5)
+    result = await new FolderStructureRule().execute("/gitroot/specification/foo/resource-manager/RP.Namespace");
+    assert(result.errorOutput?.includes("must be exactly 5 levels deep"));
 
     result = await new FolderStructureRule().execute(
       "/gitroot/specification/foo/resource-manager/RP.Namespace/FooManagement/too-deep",
     );
-    assert(result.errorOutput?.includes("levels under"));
+    assert(result.errorOutput?.includes("6 levels"));
   });
 
   it("v2: should succeed with data-plane", async function () {
@@ -341,5 +339,125 @@ options:
     );
 
     assert(result.success);
+  });
+
+  it("should enforce v2 compliance when target branch uses v2 structure", async function () {
+    vi.mocked(globby.globby).mockImplementation(async (patterns, options) => {
+      // Mock tspconfig and tsp files for validation
+      if (options?.onlyDirectories === true) {
+        return [];
+      }
+      return patterns[0].includes("tspconfig") ? ["tspconfig.yaml"] : ["main.tsp"];
+    });
+    normalizePathSpy.mockReturnValue("/gitroot");
+
+    // Mock git operations to simulate target branch using v2 structure
+    const mockGit = {
+      revparse: vi.fn().mockResolvedValue("/gitroot"),
+      branch: vi.fn().mockResolvedValue({ current: "feature-branch" }),
+      raw: vi.fn().mockResolvedValue("data-plane\nresource-manager\nsome-other-dir")
+    } as any;
+    
+    // Mock simpleGit function
+    const simpleGitSpy = vi.spyOn(await import("simple-git"), "simpleGit").mockImplementation(() => mockGit);
+
+    // Test with v1 structure folder when target branch uses v2 - should fail
+    const result = await new FolderStructureRule().execute("/gitroot/specification/foo/Foo");
+
+    assert(result.errorOutput);
+    assert(result.errorOutput.includes("The target branch is already using folder structure v2"));
+    
+    // Cleanup
+    simpleGitSpy.mockRestore();
+  });
+
+  it("should not enforce v2 compliance when target branch uses v1 structure", async function () {
+    vi.mocked(globby.globby).mockImplementation(async (patterns, options) => {
+      // Mock tspconfig and tsp files for validation
+      if (options?.onlyDirectories === true) {
+        return [];
+      }
+      return patterns[0].includes("tspconfig") ? ["tspconfig.yaml"] : ["main.tsp"];
+    });
+    normalizePathSpy.mockReturnValue("/gitroot");
+
+    // Mock git operations to simulate target branch using only v1 structure
+    const mockGit = {
+      revparse: vi.fn().mockResolvedValue("/gitroot"),
+      branch: vi.fn().mockResolvedValue({ current: "feature-branch" }),
+      raw: vi.fn().mockResolvedValue("Service1\nService2\nShared") // Only v1 structure directories
+    } as any;
+    
+    const simpleGitSpy = vi.spyOn(await import("simple-git"), "simpleGit").mockImplementation(() => mockGit);
+
+    // Test with v1 structure folder when target branch uses v1 - should pass
+    const result = await new FolderStructureRule().execute("/gitroot/specification/foo/Foo");
+
+    assert(result.success);
+    
+    // Cleanup
+    simpleGitSpy.mockRestore();
+  });
+
+  it("should allow v2 structure when target branch uses v2 structure", async function () {
+    vi.mocked(globby.globby).mockImplementation(async (patterns, options) => {
+      // Mock tspconfig and tsp files for validation
+      if (options?.onlyDirectories === true) {
+        return [];
+      }
+      // For tspconfig pattern
+      if (patterns[0].includes("tspconfig")) {
+        return ["tspconfig.yaml"];
+      }
+      // For .tsp files
+      return ["main.tsp"];
+    });
+    normalizePathSpy.mockReturnValue("/gitroot");
+
+    // Mock git operations to simulate target branch using v2 structure
+    const mockGit = {
+      revparse: vi.fn().mockResolvedValue("/gitroot"),
+      branch: vi.fn().mockResolvedValue({ current: "feature-branch" }),
+      raw: vi.fn().mockResolvedValue("data-plane\nresource-manager")
+    } as any;
+    
+    const simpleGitSpy = vi.spyOn(await import("simple-git"), "simpleGit").mockImplementation(() => mockGit);
+
+    // Test with v2 data-plane structure when target branch uses v2 - should pass
+    const result = await new FolderStructureRule().execute("/gitroot/specification/foo/data-plane/FooService");
+
+    assert(result.success);
+    
+    // Cleanup
+    simpleGitSpy.mockRestore();
+  });
+
+  it("should detect invalid v2 structure when target branch uses v2 structure", async function () {
+    vi.mocked(globby.globby).mockImplementation(async (patterns, options) => {
+      // Mock tspconfig and tsp files for validation
+      if (options?.onlyDirectories === true) {
+        return [];
+      }
+      return patterns[0].includes("tspconfig") ? ["tspconfig.yaml"] : ["main.tsp"];
+    });
+    normalizePathSpy.mockReturnValue("/gitroot");
+
+    // Mock git operations to simulate target branch using v2 structure
+    const mockGit = {
+      revparse: vi.fn().mockResolvedValue("/gitroot"),
+      branch: vi.fn().mockResolvedValue({ current: "feature-branch" }),
+      raw: vi.fn().mockResolvedValue("data-plane\nsome-other-dir")
+    } as any;
+    
+    const simpleGitSpy = vi.spyOn(await import("simple-git"), "simpleGit").mockImplementation(() => mockGit);
+
+    // Test with invalid v2 structure (too deep) when target branch uses v2 - should fail
+    const result = await new FolderStructureRule().execute("/gitroot/specification/foo/data-plane/FooService/TooDeep");
+
+    assert(result.errorOutput);
+    assert(result.errorOutput.includes("exactly 4 levels deep"));
+    
+    // Cleanup
+    simpleGitSpy.mockRestore();
   });
 });
