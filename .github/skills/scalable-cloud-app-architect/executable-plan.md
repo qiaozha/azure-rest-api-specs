@@ -5,12 +5,16 @@
 > **Org-policy fixes applied in this plan:**
 >
 > - Phase 1 (Entra ID app registration) is **skipped** — blocked by conditional access policy (AADSTS530084)
-> - AKS is deployed to **`westus2`** (VM quota restrictions prevent D-series/DS-series in `eastus`)
-> - Cosmos DB: `--disable-key-based-metadata-write-access` (no local auth)
-> - SQL Server: Entra-only authentication (no local admin password)
-> - Storage: `--allow-shared-key-access false` (org policy disallows shared key)
-> - Storage lifecycle: no `tierToArchive` (ZRS accounts don't support archive tier)
-> - APIM: `StandardV2` SKU (~5 min provisioning vs 30-45 min for classic `Standard`)
+> - AKS is deployed to **`westus2`** using `Standard_D4s_v5` (quota limits in `eastus`; `Standard_D4s_v3` capacity also exhausted in `westus2` after initial deploy)
+
+- AGC Traffic Controller deployed to **`westus2`** (same region as AKS) — AGC association requires the subnet and traffic controller to be in the same region
+- AGC subnet (`AKS-SUBNET`) must be delegated to `Microsoft.ServiceNetworking/TrafficControllers` before creating the association
+- AGC CLI extension (`az network alb`) has a cache issue post-create; use `az rest` for frontend and association creation
+  > - Cosmos DB: `--disable-key-based-metadata-write-access` (no local auth)
+  > - SQL Server: Entra-only authentication (no local admin password)
+  > - Storage: `--allow-shared-key-access false` (org policy disallows shared key)
+  > - Storage lifecycle: no `tierToArchive` (ZRS accounts don't support archive tier)
+  > - APIM: `StandardV2` SKU (~5 min provisioning vs 30-45 min for classic `Standard`)
 
 ---
 
@@ -31,7 +35,7 @@ export WORKSPACE_NAME="scalable-app-law"
 export APPINSIGHTS_NAME="scalable-app-ai"
 export ACTION_GROUP_NAME="scalable-app-ag"
 export COSMOS_ACCOUNT="scalableappcosmosdb"
-export SQL_SERVER="scalableappsql"
+export SQL_SERVER="scalableappsql2"              # scalableappsql name was globally reserved post-cleanup
 export STORAGE_ACCOUNT="scalableappstor"
 export REDIS_NAME="scalable-app-redis"
 export AKS_CLUSTER="scalable-app-aks"
@@ -160,17 +164,30 @@ export ACTION_GROUP_ID="$(az monitor action-group show \
 
 ```bash
 # ── 3.1a  Cosmos DB Account ─────────────────────────────────────
-az cosmosdb create \
-  --resource-group "$RG" \
-  --name "$COSMOS_ACCOUNT" \
-  --kind GlobalDocumentDB \
-  --default-consistency-level Session \
-  --locations regionName="$LOCATION" failoverPriority=0 isZoneRedundant=true \
-  --locations regionName=westus failoverPriority=1 isZoneRedundant=false \
-  --enable-automatic-failover true \
-  --enable-multiple-write-locations false \
-  --disable-key-based-metadata-write-access true
+# NOTE: az cosmosdb create does not expose --disable-local-auth; use az rest
+# to set both disableLocalAuth:true AND disableKeyBasedMetadataWriteAccess:true
+# NOTE: isZoneRedundant:true in eastus causes provisioning failure for this
+# subscription; use isZoneRedundant:false for both regions.
+az rest --method PUT \
+  --uri "https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${RG}/providers/Microsoft.DocumentDB/databaseAccounts/${COSMOS_ACCOUNT}?api-version=2025-10-15" \
+  --body "{
+    \"location\": \"${LOCATION}\",
+    \"kind\": \"GlobalDocumentDB\",
+    \"properties\": {
+      \"databaseAccountOfferType\": \"Standard\",
+      \"consistencyPolicy\": { \"defaultConsistencyLevel\": \"Session\" },
+      \"locations\": [
+        {\"locationName\": \"${LOCATION}\", \"failoverPriority\": 0, \"isZoneRedundant\": false},
+        {\"locationName\": \"westus\", \"failoverPriority\": 1, \"isZoneRedundant\": false}
+      ],
+      \"enableAutomaticFailover\": true,
+      \"enableMultipleWriteLocations\": false,
+      \"disableKeyBasedMetadataWriteAccess\": true,
+      \"disableLocalAuth\": true
+    }
+  }"
 # ⏳ Wait ~5-10 minutes for provisioning to complete.
+az cosmosdb show --resource-group "$RG" --name "$COSMOS_ACCOUNT" --query provisioningState -o tsv
 ```
 
 ```bash
@@ -217,10 +234,12 @@ az cosmosdb sql container create \
 
 ```bash
 # ── 3.2a  SQL Logical Server (Entra-only auth) ───────────────────
+# NOTE: eastus does not accept new SQL servers; use eastus2 instead.
+# NOTE: global name reservation may linger after deletion — use a fresh name if needed.
 az sql server create \
   --resource-group "$RG" \
   --name "$SQL_SERVER" \
-  --location "$LOCATION" \
+  --location "eastus2" \
   --enable-ad-only-auth \
   --external-admin-principal-type User \
   --external-admin-name "$MY_UPN" \
@@ -240,6 +259,7 @@ az sql server firewall-rule create \
 
 ```bash
 # ── 3.2c  SQL Database — Orders (serverless, 4 vCores) ───────────
+# NOTE: --zone-redundant is not supported for Serverless tier; omit.
 az sql db create \
   --resource-group "$RG" \
   --server "$SQL_SERVER" \
@@ -249,8 +269,7 @@ az sql db create \
   --capacity 4 \
   --compute-model Serverless \
   --auto-pause-delay 60 \
-  --min-capacity 1 \
-  --zone-redundant true
+  --min-capacity 1
 ```
 
 ```bash
@@ -359,7 +378,7 @@ az redis create \
 
 **API Spec:** `specification/containerservice/resource-manager/` — `2026-01-01`
 
-> **Org-policy fix:** AKS moved to **`westus2`** — D-series, DS-series, and B-series VMs are quota-restricted in `eastus` for this subscription. `Standard_D4s_v3` is available in `westus2`.
+> **Org-policy fix:** AKS moved to **`westus2`** — D-series, DS-series, and B-series VMs are quota-restricted in `eastus` for this subscription. `Standard_D4s_v3` was initially used but capacity was exhausted in `westus2`; replaced with `Standard_D4s_v5` (same 4 vCPU/16 GiB spec, v5 generation confirmed available).
 >
 > Availability zones are not specified — zone support depends on region+VM-size combination.
 
@@ -374,7 +393,7 @@ az aks create \
   --min-count 1 \
   --max-count 3 \
   --enable-cluster-autoscaler \
-  --node-vm-size Standard_D4s_v3 \
+  --node-vm-size Standard_D4s_v5 \
   --nodepool-name system \
   --network-plugin azure \
   --network-policy azure \
@@ -385,21 +404,25 @@ az aks create \
   --enable-workload-identity \
   --workspace-resource-id "$WORKSPACE_ID" \
   --enable-addons monitoring \
+  --enable-gateway-api \
+  --enable-application-load-balancer \
   --generate-ssh-keys
 # ⏳ Wait ~5-10 minutes.
 ```
 
 ```bash
 # ── 4.1b  AKS — Workload Node Pool (User mode, autoscaling) ──────
+# NOTE: Standard_D4s_v3 and Standard_D8s_v3 are capacity-restricted in westus2.
+# Use Standard_D4s_v5 (same 4 vCPU/16 GiB, v5 generation confirmed available).
 az aks nodepool add \
   --resource-group "$RG" \
   --cluster-name "$AKS_CLUSTER" \
   --name workload \
-  --node-count 3 \
-  --min-count 3 \
-  --max-count 20 \
+  --node-count 2 \
+  --min-count 2 \
+  --max-count 10 \
   --enable-cluster-autoscaler \
-  --node-vm-size Standard_D8s_v3 \
+  --node-vm-size Standard_D4s_v5 \
   --mode User \
   --labels workload=microservices
 ```
@@ -409,42 +432,67 @@ az aks nodepool add \
 **API Spec:** `specification/servicenetworking/resource-manager/` — `2025-01-01`
 
 ```bash
-# ── 4.2a  Install ALB Controller extension on AKS ───────────────
-az k8s-extension create \
-  --resource-group "$RG" \
-  --cluster-name "$AKS_CLUSTER" \
-  --cluster-type managedClusters \
-  --name alb-controller \
-  --extension-type microsoft.app.containers.applicationlbcontroller \
-  --scope cluster \
-  --release-train stable
+# ── 4.2a  Install ALB Controller via AKS managed add-on ──────────
+# NOTE: az k8s-extension with extension-type microsoft.app.containers.applicationlbcontroller
+# fails with ExtensionTypeRegistrationGetFailed in westus2 (extension not supported for
+# ManagedClusters via KubernetesConfiguration). Use the AKS managed add-on instead.
+
+# Register preview features (one-time per subscription):
+az feature register --namespace "Microsoft.ContainerService" --name "ManagedGatewayAPIPreview"
+az feature register --namespace "Microsoft.ContainerService" --name "ApplicationLoadBalancerPreview"
+az provider register --namespace Microsoft.ContainerService
+
+# Install required CLI extensions:
+az extension add --name alb --allow-preview true
+az extension add --name aks-preview --allow-preview true
+
+# Wait for features to register (check until "Registered"):
+az feature show --namespace "Microsoft.ContainerService" --name "ManagedGatewayAPIPreview" --query properties.state -o tsv
+az feature show --namespace "Microsoft.ContainerService" --name "ApplicationLoadBalancerPreview" --query properties.state -o tsv
+
+# NOTE: --enable-gateway-api and --enable-application-load-balancer are now passed
+# directly to az aks create (Phase 4.1a), so no separate update step is needed here.
+# If upgrading an existing cluster that was created without these flags, run:
+#   az aks update \
+#     --resource-group "$RG" \
+#     --name "$AKS_CLUSTER" \
+#     --enable-gateway-api \
+#     --enable-application-load-balancer
+# ⚠️  az aks update will fail with SkuNotAvailable if capacity is insufficient for the
+# node pool surge required to roll the change. Baking the flags into az aks create avoids this.
 ```
 
 ```bash
 # ── 4.2b  Traffic Controller ─────────────────────────────────────
+# NOTE: Microsoft.ServiceNetworking must be registered before creating AGC resources.
+# NOTE: AGC must be in the SAME region as the AKS subnet (westus2), NOT $LOCATION (eastus).
+az provider register --namespace Microsoft.ServiceNetworking
 az network alb create \
   --resource-group "$RG" \
   --name "$AGC_NAME" \
-  --location "$LOCATION"
+  --location "$AKS_LOCATION"
 ```
 
 ```bash
 # ── 4.2c  Frontend ──────────────────────────────────────────────
-az network alb frontend create \
-  --resource-group "$RG" \
-  --alb-name "$AGC_NAME" \
-  --name primary
+# NOTE: az network alb frontend create may return ResourceNotFound immediately after
+# az network alb create due to an ALB CLI extension cache issue. Use az rest as a workaround.
+az rest --method PUT \
+  --uri "https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${RG}/providers/Microsoft.ServiceNetworking/trafficControllers/${AGC_NAME}/frontends/primary?api-version=2025-01-01" \
+  --body "{\"location\":\"${AKS_LOCATION}\",\"properties\":{}}" \
+  --query "properties.provisioningState" -o tsv
 
-export AGC_FQDN="$(az network alb frontend show \
-  --resource-group "$RG" \
-  --alb-name "$AGC_NAME" \
-  --name primary \
-  --query 'fqdn' -o tsv)"
+export AGC_FQDN="$(az rest --method GET \
+  --uri "https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${RG}/providers/Microsoft.ServiceNetworking/trafficControllers/${AGC_NAME}/frontends/primary?api-version=2025-01-01" \
+  --query "properties.fqdn" -o tsv)"
 echo "AGC FQDN: $AGC_FQDN"
 ```
 
 ```bash
 # ── 4.2d  Association (link to AKS subnet) ───────────────────────
+# NOTE: AKS-SUBNET must be delegated to Microsoft.ServiceNetworking/TrafficControllers first.
+# NOTE: --query '[0].id' picks aks-appgateway (first alphabetically), not AKS-SUBNET — use show instead.
+# NOTE: az network alb association create also suffers from the CLI extension cache issue; use az rest.
 AKS_NODE_RG="$(az aks show \
   --resource-group "$RG" \
   --name "$AKS_CLUSTER" \
@@ -454,17 +502,27 @@ AKS_VNET_NAME="$(az network vnet list \
   --resource-group "$AKS_NODE_RG" \
   --query '[0].name' -o tsv)"
 
-SUBNET_ID="$(az network vnet subnet list \
+# Delegate the subnet to the AGC service
+az network vnet subnet update \
   --resource-group "$AKS_NODE_RG" \
   --vnet-name "$AKS_VNET_NAME" \
-  --query '[0].id' -o tsv)"
+  --name AKS-SUBNET \
+  --delegations "Microsoft.ServiceNetworking/TrafficControllers"
 
-az network alb association create \
-  --resource-group "$RG" \
-  --alb-name "$AGC_NAME" \
-  --name aks-assoc \
-  --association-type subnets \
-  --subnets "$SUBNET_ID"
+SUBNET_ID="$(az network vnet subnet show \
+  --resource-group "$AKS_NODE_RG" \
+  --vnet-name "$AKS_VNET_NAME" \
+  --name AKS-SUBNET \
+  --query id -o tsv)"
+
+az rest --method PUT \
+  --uri "https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${RG}/providers/Microsoft.ServiceNetworking/trafficControllers/${AGC_NAME}/associations/aks-assoc?api-version=2025-01-01" \
+  --body "{\"location\":\"${AKS_LOCATION}\",\"properties\":{\"associationType\":\"subnets\",\"subnet\":{\"id\":\"${SUBNET_ID}\"}}}"
+
+# Poll until Succeeded (~2 min):
+az rest --method GET \
+  --uri "https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${RG}/providers/Microsoft.ServiceNetworking/trafficControllers/${AGC_NAME}/associations/aks-assoc?api-version=2025-01-01" \
+  --query "properties.provisioningState" -o tsv
 ```
 
 ---
@@ -1141,7 +1199,7 @@ export WORKSPACE_NAME="scalable-app-law"
 export APPINSIGHTS_NAME="scalable-app-ai"
 export ACTION_GROUP_NAME="scalable-app-ag"
 export COSMOS_ACCOUNT="scalableappcosmosdb"
-export SQL_SERVER="scalableappsql"
+export SQL_SERVER="scalableappsql2"              # scalableappsql name was globally reserved post-cleanup
 export STORAGE_ACCOUNT="scalableappstor"
 export REDIS_NAME="scalable-app-redis"
 export AKS_CLUSTER="scalable-app-aks"
