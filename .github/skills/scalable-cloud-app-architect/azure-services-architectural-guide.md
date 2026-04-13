@@ -44,12 +44,12 @@ How hard is it to change this decision later?
 
 Azure services have fundamentally different pricing models:
 
-| Pricing Model | Examples | Best When |
-|---|---|---|
-| **Pay-per-request** | Functions, APIM Consumption, Cosmos DB (RU) | Variable/spiky traffic |
-| **Pay-per-unit-time** | AKS nodes, Redis Premium, APIM StandardV2 | Steady baseline traffic |
-| **Serverless auto-pause** | SQL Serverless, Container Apps (scale-to-zero) | Dev/test, low-traffic services |
-| **Reserved/committed** | Reserved VMs, Cosmos DB reserved capacity | Predictable production workloads |
+| Pricing Model             | Examples                                       | Best When                        |
+| ------------------------- | ---------------------------------------------- | -------------------------------- |
+| **Pay-per-request**       | Functions, APIM Consumption, Cosmos DB (RU)    | Variable/spiky traffic           |
+| **Pay-per-unit-time**     | AKS nodes, Redis Premium, APIM StandardV2      | Steady baseline traffic          |
+| **Serverless auto-pause** | SQL Serverless, Container Apps (scale-to-zero) | Dev/test, low-traffic services   |
+| **Reserved/committed**    | Reserved VMs, Cosmos DB reserved capacity      | Predictable production workloads |
 
 The same workload can cost 10x more on the wrong pricing model. A service handling 100 requests/day on a Premium Redis P1 (~$440/mo) could use APIM's built-in cache for $0 incremental cost.
 
@@ -57,11 +57,11 @@ The same workload can cost 10x more on the wrong pricing model. A service handli
 
 Who will be paged at 3 AM when this breaks?
 
-| Complexity Level | What You Manage | Examples |
-|---|---|---|
-| **Fully managed** | Nothing — the platform handles scaling, patching, HA | Azure Functions, Cosmos DB, Front Door |
-| **Semi-managed** | Configuration, sizing, some scaling | AKS (node pools), APIM, SQL Flexible |
-| **Self-hosted** | Everything — install, patch, scale, backup, HA | PostgreSQL on VMs, Redis on AKS, NGINX on VMs |
+| Complexity Level  | What You Manage                                      | Examples                                      |
+| ----------------- | ---------------------------------------------------- | --------------------------------------------- |
+| **Fully managed** | Nothing — the platform handles scaling, patching, HA | Azure Functions, Cosmos DB, Front Door        |
+| **Semi-managed**  | Configuration, sizing, some scaling                  | AKS (node pools), APIM, SQL Flexible          |
+| **Self-hosted**   | Everything — install, patch, scale, backup, HA       | PostgreSQL on VMs, Redis on AKS, NGINX on VMs |
 
 The operational cost of a service is often larger than its Azure bill. An AKS cluster is "cheaper" than Container Apps per-unit, but requires Kubernetes expertise (RBAC, networking, upgrade cadence, node pool management) that Container Apps abstracts away entirely.
 
@@ -69,104 +69,104 @@ The operational cost of a service is often larger than its Azure bill. An AKS cl
 
 What's the maximum availability this service can achieve?
 
-| SLA Tier | Services | Notes |
-|---|---|---|
-| **99.999%** (5 nines) | Cosmos DB (multi-region write) | ~5 min downtime/year |
-| **99.99%** (4 nines) | Front Door, AKS (with zones), SQL Business Critical | ~52 min downtime/year |
-| **99.95%** (3.5 nines) | AKS (standard), APIM Standard, Redis Premium | ~4.4 hr downtime/year |
-| **99.9%** (3 nines) | App Service, SQL Serverless, Storage (LRS) | ~8.8 hr downtime/year |
+| SLA Tier               | Services                                            | Notes                 |
+| ---------------------- | --------------------------------------------------- | --------------------- |
+| **99.999%** (5 nines)  | Cosmos DB (multi-region write)                      | ~5 min downtime/year  |
+| **99.99%** (4 nines)   | Front Door, AKS (with zones), SQL Business Critical | ~52 min downtime/year |
+| **99.95%** (3.5 nines) | AKS (standard), APIM Standard, Redis Premium        | ~4.4 hr downtime/year |
+| **99.9%** (3 nines)    | App Service, SQL Serverless, Storage (LRS)          | ~8.8 hr downtime/year |
 
-Your system's overall availability is bounded by the *lowest* SLA in the critical path. Paying for Cosmos DB's 99.999% SLA is wasted if your SQL Serverless database (99.9%) is also in the hot path.
+Your system's overall availability is bounded by the _lowest_ SLA in the critical path. Paying for Cosmos DB's 99.999% SLA is wasted if your SQL Serverless database (99.9%) is also in the hot path.
 
 ### 1.5 Lock-in Gradient
 
 How portable is this choice?
 
-| Lock-in Level | Examples | Mitigation |
-|---|---|---|
-| **Low** | PostgreSQL, Redis, Kubernetes, NGINX | OSS standards, run anywhere |
-| **Medium** | AKS (K8s portable, but Azure CNI/add-ons aren't), Azure SQL (T-SQL is proprietary) | Abstract behind interfaces |
-| **High** | Cosmos DB (custom query engine), Azure Functions bindings, Front Door rules | Accept or invest in abstraction layers |
+| Lock-in Level | Examples                                                                           | Mitigation                             |
+| ------------- | ---------------------------------------------------------------------------------- | -------------------------------------- |
+| **Low**       | PostgreSQL, Redis, Kubernetes, NGINX                                               | OSS standards, run anywhere            |
+| **Medium**    | AKS (K8s portable, but Azure CNI/add-ons aren't), Azure SQL (T-SQL is proprietary) | Abstract behind interfaces             |
+| **High**      | Cosmos DB (custom query engine), Azure Functions bindings, Front Door rules        | Accept or invest in abstraction layers |
 
 ---
 
 ## 2. Service Taxonomy: Azure Services by Architectural Category
 
-Before choosing individual services, understand the full landscape organized by what they *do*, not how they're marketed.
+Before choosing individual services, understand the full landscape organized by what they _do_, not how they're marketed.
 
 ### Compute — Where Code Executes
 
-| Service | Model | Min Scale | Max Scale | K8s Required? |
-|---|---|---|---|---|
-| **Azure Kubernetes Service (AKS)** | Container orchestration | 1 node | 5,000 nodes | Yes (you own it) |
-| **Azure Container Apps** | Serverless containers | 0 (scale-to-zero) | 300 replicas | No (K8s abstracted) |
-| **Azure App Service** | PaaS web hosting | 1 instance | 30 instances | No |
-| **Azure Functions** | Event-driven serverless | 0 | 200 instances | No |
-| **Azure Container Instances** | Single container/group | 1 container | 100 container groups | No |
+| Service                            | Model                   | Min Scale         | Max Scale            | K8s Required?       |
+| ---------------------------------- | ----------------------- | ----------------- | -------------------- | ------------------- |
+| **Azure Kubernetes Service (AKS)** | Container orchestration | 1 node            | 5,000 nodes          | Yes (you own it)    |
+| **Azure Container Apps**           | Serverless containers   | 0 (scale-to-zero) | 300 replicas         | No (K8s abstracted) |
+| **Azure App Service**              | PaaS web hosting        | 1 instance        | 30 instances         | No                  |
+| **Azure Functions**                | Event-driven serverless | 0                 | 200 instances        | No                  |
+| **Azure Container Instances**      | Single container/group  | 1 container       | 100 container groups | No                  |
 
 ### Database — Relational
 
-| Service | Engine | Compute Model | Max Size | Multi-Region |
-|---|---|---|---|---|
-| **Azure SQL Database** | SQL Server (T-SQL) | Provisioned / Serverless / Hyperscale | 100 TB (Hyperscale) | Failover groups |
-| **Azure SQL Managed Instance** | SQL Server (near-100%) | Provisioned | 16 TB | Failover groups |
-| **Azure Database for PostgreSQL Flexible** | PostgreSQL | Provisioned / Burstable | 64 TB | Read replicas |
-| **Azure Database for MySQL Flexible** | MySQL | Provisioned / Burstable | 16 TB | Read replicas |
-| **Cosmos DB for PostgreSQL (Citus)** | PostgreSQL + Citus | Distributed | 2 TB/shard × N | No native multi-region |
+| Service                                    | Engine                 | Compute Model                         | Max Size            | Multi-Region           |
+| ------------------------------------------ | ---------------------- | ------------------------------------- | ------------------- | ---------------------- |
+| **Azure SQL Database**                     | SQL Server (T-SQL)     | Provisioned / Serverless / Hyperscale | 100 TB (Hyperscale) | Failover groups        |
+| **Azure SQL Managed Instance**             | SQL Server (near-100%) | Provisioned                           | 16 TB               | Failover groups        |
+| **Azure Database for PostgreSQL Flexible** | PostgreSQL             | Provisioned / Burstable               | 64 TB               | Read replicas          |
+| **Azure Database for MySQL Flexible**      | MySQL                  | Provisioned / Burstable               | 16 TB               | Read replicas          |
+| **Cosmos DB for PostgreSQL (Citus)**       | PostgreSQL + Citus     | Distributed                           | 2 TB/shard × N      | No native multi-region |
 
 ### Database — NoSQL / Document
 
-| Service | Data Model | Pricing | Global Distribution | Consistency |
-|---|---|---|---|---|
-| **Cosmos DB (NoSQL API)** | JSON documents | RU-based (autoscale) | Multi-region read/write | 5 levels (Strong → Eventual) |
-| **Cosmos DB (MongoDB API)** | BSON documents | RU-based | Multi-region | Same 5 levels |
-| **Cosmos DB for MongoDB (vCore)** | BSON documents | vCore-based (fixed) | No native multi-region | MongoDB default |
-| **Azure Table Storage** | Key-value | Per-transaction | GRS replication | Eventual |
+| Service                           | Data Model     | Pricing              | Global Distribution     | Consistency                  |
+| --------------------------------- | -------------- | -------------------- | ----------------------- | ---------------------------- |
+| **Cosmos DB (NoSQL API)**         | JSON documents | RU-based (autoscale) | Multi-region read/write | 5 levels (Strong → Eventual) |
+| **Cosmos DB (MongoDB API)**       | BSON documents | RU-based             | Multi-region            | Same 5 levels                |
+| **Cosmos DB for MongoDB (vCore)** | BSON documents | vCore-based (fixed)  | No native multi-region  | MongoDB default              |
+| **Azure Table Storage**           | Key-value      | Per-transaction      | GRS replication         | Eventual                     |
 
 ### Caching
 
-| Service | Engine | Latency | Persistence | Modules |
-|---|---|---|---|---|
-| **Azure Cache for Redis** | Redis OSS | Sub-ms | Optional (Premium+) | No |
-| **Azure Managed Redis** | Redis Stack | Sub-ms | Yes | RediSearch, RedisJSON, etc. |
-| **APIM built-in cache** | Internal | In-process | No | N/A (policy-driven) |
+| Service                   | Engine      | Latency    | Persistence         | Modules                     |
+| ------------------------- | ----------- | ---------- | ------------------- | --------------------------- |
+| **Azure Cache for Redis** | Redis OSS   | Sub-ms     | Optional (Premium+) | No                          |
+| **Azure Managed Redis**   | Redis Stack | Sub-ms     | Yes                 | RediSearch, RedisJSON, etc. |
+| **APIM built-in cache**   | Internal    | In-process | No                  | N/A (policy-driven)         |
 
 ### API Management & Gateway
 
-| Service | Scope | Developer Portal | VNet Integration | Pay Model |
-|---|---|---|---|---|
-| **APIM Consumption** | Serverless gateway | Yes | No | Per-call |
-| **APIM StandardV2** | Dedicated gateway | Yes | No | Per-unit |
-| **APIM Premium** | Enterprise gateway | Yes | Yes (VNet injection) | Per-unit |
-| **Application Gateway for Containers** | K8s L7 ingress | No | Yes (AKS VNet) | Included with AKS |
-| **Azure Application Gateway** | Regional L7 LB | No | Yes | Per-gateway + per-GB |
+| Service                                | Scope              | Developer Portal | VNet Integration     | Pay Model            |
+| -------------------------------------- | ------------------ | ---------------- | -------------------- | -------------------- |
+| **APIM Consumption**                   | Serverless gateway | Yes              | No                   | Per-call             |
+| **APIM StandardV2**                    | Dedicated gateway  | Yes              | No                   | Per-unit             |
+| **APIM Premium**                       | Enterprise gateway | Yes              | Yes (VNet injection) | Per-unit             |
+| **Application Gateway for Containers** | K8s L7 ingress     | No               | Yes (AKS VNet)       | Included with AKS    |
+| **Azure Application Gateway**          | Regional L7 LB     | No               | Yes                  | Per-gateway + per-GB |
 
 ### Edge / CDN / WAF
 
-| Service | Scope | WAF | CDN | SSL Offload |
-|---|---|---|---|---|
-| **Front Door Premium** | Global edge | Yes (managed rules) | Yes | Yes |
-| **Front Door Standard** | Global edge | Basic custom rules | Yes | Yes |
-| **Azure CDN** | Content delivery only | No | Yes | Yes |
-| **Application Gateway + WAF** | Regional only | Yes (OWASP) | No | Yes |
+| Service                       | Scope                 | WAF                 | CDN | SSL Offload |
+| ----------------------------- | --------------------- | ------------------- | --- | ----------- |
+| **Front Door Premium**        | Global edge           | Yes (managed rules) | Yes | Yes         |
+| **Front Door Standard**       | Global edge           | Basic custom rules  | Yes | Yes         |
+| **Azure CDN**                 | Content delivery only | No                  | Yes | Yes         |
+| **Application Gateway + WAF** | Regional only         | Yes (OWASP)         | No  | Yes         |
 
 ### Observability
 
-| Service | Type | Query Language | Integration |
-|---|---|---|---|
-| **Log Analytics** | Log aggregation | KQL | Native Azure |
-| **Application Insights** | APM / distributed tracing | KQL | Auto-instrumentation (Java, .NET, Node, Python) |
-| **Azure Monitor Metrics** | Time-series metrics | Metric queries | Native Azure |
-| **Azure Managed Grafana** | Dashboarding | PromQL + KQL | Multi-source (Azure, Prometheus, etc.) |
+| Service                   | Type                      | Query Language | Integration                                     |
+| ------------------------- | ------------------------- | -------------- | ----------------------------------------------- |
+| **Log Analytics**         | Log aggregation           | KQL            | Native Azure                                    |
+| **Application Insights**  | APM / distributed tracing | KQL            | Auto-instrumentation (Java, .NET, Node, Python) |
+| **Azure Monitor Metrics** | Time-series metrics       | Metric queries | Native Azure                                    |
+| **Azure Managed Grafana** | Dashboarding              | PromQL + KQL   | Multi-source (Azure, Prometheus, etc.)          |
 
 ### Messaging / Eventing
 
-| Service | Pattern | Ordering | Max Throughput | Retention |
-|---|---|---|---|---|
-| **Azure Service Bus** | Queue / topic-subscription | FIFO (sessions) | ~1,000 msg/s per unit | 14 days (Standard) |
-| **Azure Event Hubs** | Event streaming (log) | Per-partition | Millions/sec | 1–90 days |
-| **Azure Event Grid** | Reactive event routing | No guarantee | 10M events/sec | 24 hr retry |
-| **Azure Queue Storage** | Simple queue | No | 20,000 msg/s | 7 days |
+| Service                 | Pattern                    | Ordering        | Max Throughput        | Retention          |
+| ----------------------- | -------------------------- | --------------- | --------------------- | ------------------ |
+| **Azure Service Bus**   | Queue / topic-subscription | FIFO (sessions) | ~1,000 msg/s per unit | 14 days (Standard) |
+| **Azure Event Hubs**    | Event streaming (log)      | Per-partition   | Millions/sec          | 1–90 days          |
+| **Azure Event Grid**    | Reactive event routing     | No guarantee    | 10M events/sec        | 24 hr retry        |
+| **Azure Queue Storage** | Simple queue               | No              | 20,000 msg/s          | 7 days             |
 
 ---
 
@@ -210,13 +210,13 @@ This is the highest-impact, hardest-to-reverse decision in the stack. It determi
 
 For a workload running 4 microservices, each needing 0.5 vCPU / 1 GiB RAM:
 
-| Platform | Idle Cost (0 traffic) | Moderate Load | Burst (10x) | Annual Estimate |
-|---|---|---|---|---|
-| **AKS** (3-node D4s_v5) | ~$440/mo (nodes always on) | ~$440/mo | ~$1,500/mo (autoscale) | ~$6,000–$18,000 |
-| **Container Apps** (Consumption) | ~$0 (scale-to-zero) | ~$60/mo | ~$600/mo | ~$720–$7,200 |
-| **App Service** (S1 × 4) | ~$280/mo | ~$280/mo | ~$700/mo (scale-out) | ~$3,400–$8,400 |
+| Platform                         | Idle Cost (0 traffic)      | Moderate Load | Burst (10x)            | Annual Estimate |
+| -------------------------------- | -------------------------- | ------------- | ---------------------- | --------------- |
+| **AKS** (3-node D4s_v5)          | ~$440/mo (nodes always on) | ~$440/mo      | ~$1,500/mo (autoscale) | ~$6,000–$18,000 |
+| **Container Apps** (Consumption) | ~$0 (scale-to-zero)        | ~$60/mo       | ~$600/mo               | ~$720–$7,200    |
+| **App Service** (S1 × 4)         | ~$280/mo                   | ~$280/mo      | ~$700/mo (scale-out)   | ~$3,400–$8,400  |
 
-*AKS is the most expensive at low traffic but the cheapest per-unit at high scale. Container Apps wins at variable traffic. App Service wins at simplicity.*
+_AKS is the most expensive at low traffic but the cheapest per-unit at high scale. Container Apps wins at variable traffic. App Service wins at simplicity._
 
 ---
 
@@ -226,11 +226,11 @@ Database choices are the **hardest to reverse** because they involve data model 
 
 ### Relational vs Document: The Foundational Split
 
-| If your data is... | Choose | Why |
-|---|---|---|
-| Highly structured with complex joins (orders, transactions, inventory) | **Relational** (SQL, PostgreSQL, MySQL) | ACID transactions, referential integrity, SQL standard |
-| Schema-flexible with nested objects (product catalogs, user profiles, IoT telemetry) | **Document** (Cosmos DB, PostgreSQL JSONB) | Schema evolution, hierarchical data, horizontal scaling |
-| Both | **PostgreSQL Flexible** (relational + JSONB) or **separate engines** | One engine vs two to operate |
+| If your data is...                                                                   | Choose                                                               | Why                                                     |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------- |
+| Highly structured with complex joins (orders, transactions, inventory)               | **Relational** (SQL, PostgreSQL, MySQL)                              | ACID transactions, referential integrity, SQL standard  |
+| Schema-flexible with nested objects (product catalogs, user profiles, IoT telemetry) | **Document** (Cosmos DB, PostgreSQL JSONB)                           | Schema evolution, hierarchical data, horizontal scaling |
+| Both                                                                                 | **PostgreSQL Flexible** (relational + JSONB) or **separate engines** | One engine vs two to operate                            |
 
 ### Within Relational: Azure SQL vs PostgreSQL vs MySQL
 
@@ -276,11 +276,11 @@ This is where the nuance matters most:
 
 The single most important Cosmos DB design choice — made once, nearly impossible to change:
 
-| Workload | Good Partition Key | Bad Partition Key | Why |
-|---|---|---|---|
-| Product catalog | `/categoryId` | `/id` (too granular) or `/status` (too few values) | Categories distribute evenly; status has only 3-4 values (hot partition) |
-| User profiles | `/userId` | `/country` (skewed) | User IDs are uniformly distributed |
-| Order history | `/customerId` | `/orderDate` (temporal hot partition) | Queries usually filter by customer |
+| Workload        | Good Partition Key | Bad Partition Key                                  | Why                                                                      |
+| --------------- | ------------------ | -------------------------------------------------- | ------------------------------------------------------------------------ |
+| Product catalog | `/categoryId`      | `/id` (too granular) or `/status` (too few values) | Categories distribute evenly; status has only 3-4 values (hot partition) |
+| User profiles   | `/userId`          | `/country` (skewed)                                | User IDs are uniformly distributed                                       |
+| Order history   | `/customerId`      | `/orderDate` (temporal hot partition)              | Queries usually filter by customer                                       |
 
 ---
 
@@ -304,22 +304,24 @@ Client ──→ Front Door (CDN caching: static assets, 1-24 hr TTL)
 
 Each layer has different characteristics:
 
-| Layer | Latency | Shared Across Instances? | Survives Restart? | Cost |
-|---|---|---|---|---|
-| **Front Door CDN** | ~1 ms (edge POP) | Yes (globally) | Yes | Included in Front Door |
-| **APIM built-in cache** | ~1 ms (in-process) | No (per APIM unit) | No | Included in APIM |
-| **In-app memory** | ~0.01 ms | No | No | Free (uses app RAM) |
-| **Redis** | ~1 ms (network hop) | Yes (all instances) | Yes (Premium+) | $50–$450+/mo |
-| **Cosmos DB integrated cache** | ~2 ms (same region) | No (per gateway) | No | Free (uses gateway RAM) |
+| Layer                          | Latency             | Shared Across Instances? | Survives Restart? | Cost                    |
+| ------------------------------ | ------------------- | ------------------------ | ----------------- | ----------------------- |
+| **Front Door CDN**             | ~1 ms (edge POP)    | Yes (globally)           | Yes               | Included in Front Door  |
+| **APIM built-in cache**        | ~1 ms (in-process)  | No (per APIM unit)       | No                | Included in APIM        |
+| **In-app memory**              | ~0.01 ms            | No                       | No                | Free (uses app RAM)     |
+| **Redis**                      | ~1 ms (network hop) | Yes (all instances)      | Yes (Premium+)    | $50–$450+/mo            |
+| **Cosmos DB integrated cache** | ~2 ms (same region) | No (per gateway)         | No                | Free (uses gateway RAM) |
 
 ### When You Need Redis vs When You Don't
 
 **Skip Redis if:**
+
 - Your only caching need is API response caching → APIM built-in `<cache-lookup>` / `<cache-store>` policies handle this with zero extra infrastructure
 - Your data layer is Cosmos DB and you only need repeated-read caching → enable Cosmos DB integrated cache
 - Your app runs as a single instance → in-process `IMemoryCache` is simpler and faster
 
 **Use Redis when:**
+
 - You need a **shared cache** across multiple app instances (session state, shopping cart, rate limiting counters)
 - You need **Pub/Sub** for real-time features (notifications, cache invalidation)
 - You need **distributed data structures** (sorted sets for leaderboards, HyperLogLog for unique counts)
@@ -327,12 +329,12 @@ Each layer has different characteristics:
 
 ### Redis SKU Decision
 
-| Scenario | Recommended SKU | Why |
-|---|---|---|
-| Dev/test | Standard C0 | Cheapest with SLA |
-| Production API caching only | Standard C1 | HA, no persistence needed |
-| Session store + Pub/Sub | Premium P1 | Persistence, VNet, zones |
-| Full-text search, JSON queries | Enterprise E10 | Redis Stack modules |
+| Scenario                       | Recommended SKU | Why                       |
+| ------------------------------ | --------------- | ------------------------- |
+| Dev/test                       | Standard C0     | Cheapest with SLA         |
+| Production API caching only    | Standard C1     | HA, no persistence needed |
+| Session store + Pub/Sub        | Premium P1      | Persistence, VNet, zones  |
+| Full-text search, JSON queries | Enterprise E10  | Redis Stack modules       |
 
 ---
 
@@ -342,38 +344,40 @@ The API gateway question often conflates two different concerns: **traffic manag
 
 ### Traffic Management vs API Lifecycle
 
-| Concern | APIM | Application Gateway for Containers (AGC) | NGINX Ingress |
-|---|---|---|---|
-| L7 routing | ✅ (via API paths) | ✅ (Gateway API CRDs) | ✅ (Ingress resources) |
-| Rate limiting | ✅ (policy) | ❌ | ✅ (annotations) |
-| JWT validation | ✅ (policy) | ❌ | ❌ (needs authz middleware) |
-| Developer portal | ✅ | ❌ | ❌ |
-| Subscription keys | ✅ | ❌ | ❌ |
-| Response caching | ✅ (built-in) | ❌ | ❌ |
-| Request/response transformation | ✅ (policy) | ❌ | Limited |
-| Azure-native integration | Deep | Deep | Community |
-| Cost (incremental) | $160+/mo (StandardV2) | Included with AKS | Free (self-hosted) |
+| Concern                         | APIM                  | Application Gateway for Containers (AGC) | NGINX Ingress               |
+| ------------------------------- | --------------------- | ---------------------------------------- | --------------------------- |
+| L7 routing                      | ✅ (via API paths)    | ✅ (Gateway API CRDs)                    | ✅ (Ingress resources)      |
+| Rate limiting                   | ✅ (policy)           | ❌                                       | ✅ (annotations)            |
+| JWT validation                  | ✅ (policy)           | ❌                                       | ❌ (needs authz middleware) |
+| Developer portal                | ✅                    | ❌                                       | ❌                          |
+| Subscription keys               | ✅                    | ❌                                       | ❌                          |
+| Response caching                | ✅ (built-in)         | ❌                                       | ❌                          |
+| Request/response transformation | ✅ (policy)           | ❌                                       | Limited                     |
+| Azure-native integration        | Deep                  | Deep                                     | Community                   |
+| Cost (incremental)              | $160+/mo (StandardV2) | Included with AKS                        | Free (self-hosted)          |
 
 ### When to Use APIM vs Skip It
 
 **Use APIM when:**
+
 - Your APIs are consumed by **external third parties** who need self-service onboarding, API keys, usage analytics
 - You need **cross-cutting API policies** (JWT validation, rate limiting, IP filtering, CORS, response transformation) without embedding them in application code
 - You want a **developer portal** for API documentation and testing
 - You need **multi-backend routing** where a single API fronts multiple microservices
 
 **Skip APIM when:**
+
 - All APIs are **internal** (service-to-service within a VNet)
 - Your ingress controller (AGC, NGINX) handles routing, and your app framework handles auth
 - Cost sensitivity is high and the API management features aren't needed
 
 ### APIM SKU Decision
 
-| Scenario | SKU | Provisioning Time | Monthly Cost | Differentiator |
-|---|---|---|---|---|
-| Variable traffic, no VNet | Consumption | Instant | Pay-per-call (~$3.50/10K calls) | Scale-to-zero, cold starts |
-| Steady production traffic | StandardV2 | ~5 min | ~$160 | Fast provisioning, no VNet |
-| Enterprise, VNet-injected | Premium | ~30-45 min | ~$700+ | VNet, multi-region, capacity units |
+| Scenario                  | SKU         | Provisioning Time | Monthly Cost                    | Differentiator                     |
+| ------------------------- | ----------- | ----------------- | ------------------------------- | ---------------------------------- |
+| Variable traffic, no VNet | Consumption | Instant           | Pay-per-call (~$3.50/10K calls) | Scale-to-zero, cold starts         |
+| Steady production traffic | StandardV2  | ~5 min            | ~$160                           | Fast provisioning, no VNet         |
+| Enterprise, VNet-injected | Premium     | ~30-45 min        | ~$700+                          | VNet, multi-region, capacity units |
 
 ---
 
@@ -390,12 +394,12 @@ The decision tree is straightforward:
 
 ### Cost Reality
 
-| Configuration | Monthly Base Cost | CDN Included | WAF OWASP Rules |
-|---|---|---|---|
-| Front Door Premium | ~$330 | Yes | Yes (managed) |
-| Front Door Standard | ~$35 | Yes | Custom rules only |
-| Application Gateway WAF v2 | ~$225 | No | Yes (OWASP 3.2) |
-| No edge layer (APIM direct) | $0 | No | No |
+| Configuration               | Monthly Base Cost | CDN Included | WAF OWASP Rules   |
+| --------------------------- | ----------------- | ------------ | ----------------- |
+| Front Door Premium          | ~$330             | Yes          | Yes (managed)     |
+| Front Door Standard         | ~$35              | Yes          | Custom rules only |
+| Application Gateway WAF v2  | ~$225             | No           | Yes (OWASP 3.2)   |
+| No edge layer (APIM direct) | $0                | No           | No                |
 
 For a single-region app with no CDN needs, Application Gateway WAF v2 is often the better fit. Front Door Premium makes sense when you need **global distribution** (multiple regions, anycast edge POPs) or **Private Link origins**.
 
@@ -423,22 +427,22 @@ Azure Monitor
 
 **Sampling rate (Application Insights):** At high traffic, full telemetry collection can cost more than the app itself. Adaptive sampling (default) helps, but architect your instrumentation budget:
 
-| Traffic Level | Recommended Sampling | Rationale |
-|---|---|---|
-| < 10K req/day | 100% (no sampling) | Full visibility, negligible cost |
-| 10K–1M req/day | Adaptive sampling (default) | AI adjusts rate automatically |
-| > 1M req/day | Fixed 10–25% + always-sample errors | Cost control; keep 100% for failures |
+| Traffic Level  | Recommended Sampling                | Rationale                            |
+| -------------- | ----------------------------------- | ------------------------------------ |
+| < 10K req/day  | 100% (no sampling)                  | Full visibility, negligible cost     |
+| 10K–1M req/day | Adaptive sampling (default)         | AI adjusts rate automatically        |
+| > 1M req/day   | Fixed 10–25% + always-sample errors | Cost control; keep 100% for failures |
 
 ### Azure Monitor vs External Alternatives
 
-| Factor | Azure Monitor | Datadog | Grafana Cloud |
-|---|---|---|---|
-| Azure-native integration | Best (auto-discovery, diagnostic settings) | Good (Azure integration tile) | Good (Azure data source) |
-| Multi-cloud | Azure-only | Yes | Yes |
-| APM depth | Good (App Insights) | Excellent | Moderate (depends on backend) |
-| Query language | KQL | Proprietary | PromQL + LogQL |
-| Cost model | Per-GB ingested | Per-host ($15–$34/host/mo) | Per-metric, per-log-volume |
-| Lock-in | Medium (KQL, Log Analytics schema) | Medium (proprietary agents) | Low (OSS standards) |
+| Factor                   | Azure Monitor                              | Datadog                       | Grafana Cloud                 |
+| ------------------------ | ------------------------------------------ | ----------------------------- | ----------------------------- |
+| Azure-native integration | Best (auto-discovery, diagnostic settings) | Good (Azure integration tile) | Good (Azure data source)      |
+| Multi-cloud              | Azure-only                                 | Yes                           | Yes                           |
+| APM depth                | Good (App Insights)                        | Excellent                     | Moderate (depends on backend) |
+| Query language           | KQL                                        | Proprietary                   | PromQL + LogQL                |
+| Cost model               | Per-GB ingested                            | Per-host ($15–$34/host/mo)    | Per-metric, per-log-volume    |
+| Lock-in                  | Medium (KQL, Log Analytics schema)         | Medium (proprietary agents)   | Low (OSS standards)           |
 
 ---
 
@@ -452,13 +456,13 @@ In Azure-native architectures, Microsoft Entra ID serves as both the **user iden
 
 Modern Azure architectures should aim for **zero stored secrets**:
 
-| Connection | Old Way (secrets) | New Way (identity-based) |
-|---|---|---|
-| App → Cosmos DB | Connection string with key | Managed Identity + RBAC (`Cosmos DB Data Contributor`) |
-| App → SQL | SQL username/password | Managed Identity + Entra-only auth |
-| App → Storage | Storage account key | Managed Identity + RBAC (`Storage Blob Data Contributor`) |
-| App → Redis | `password=...` in connection string | Managed Identity + Entra auth (Redis 6+) |
-| APIM → Backend | API key in header | Managed Identity + backend credential |
+| Connection      | Old Way (secrets)                   | New Way (identity-based)                                  |
+| --------------- | ----------------------------------- | --------------------------------------------------------- |
+| App → Cosmos DB | Connection string with key          | Managed Identity + RBAC (`Cosmos DB Data Contributor`)    |
+| App → SQL       | SQL username/password               | Managed Identity + Entra-only auth                        |
+| App → Storage   | Storage account key                 | Managed Identity + RBAC (`Storage Blob Data Contributor`) |
+| App → Redis     | `password=...` in connection string | Managed Identity + Entra auth (Redis 6+)                  |
+| APIM → Backend  | API key in header                   | Managed Identity + backend credential                     |
 
 This isn't just a security best practice — it eliminates secret rotation, Key Vault dependency for runtime secrets, and the entire class of leaked-credential incidents.
 
@@ -488,11 +492,11 @@ A purely request-driven architecture (REST-only, synchronous) works for simple C
 
 These three services are often confused. They serve fundamentally different patterns:
 
-| Pattern | Service | Analogy |
-|---|---|---|
-| **Command/task queue** (do this exactly once) | **Service Bus** | Post office: addressed envelope, guaranteed delivery |
-| **Event stream** (what happened, replay from any point) | **Event Hubs** | Security camera: continuous recording, rewind any time |
-| **Event notification** (something happened, react) | **Event Grid** | Doorbell: push notification, fire-and-forget |
+| Pattern                                                 | Service         | Analogy                                                |
+| ------------------------------------------------------- | --------------- | ------------------------------------------------------ |
+| **Command/task queue** (do this exactly once)           | **Service Bus** | Post office: addressed envelope, guaranteed delivery   |
+| **Event stream** (what happened, replay from any point) | **Event Hubs**  | Security camera: continuous recording, rewind any time |
+| **Event notification** (something happened, react)      | **Event Grid**  | Doorbell: push notification, fire-and-forget           |
 
 **Practical test:** If you say "process this order" → Service Bus. If you say "order #1234 was placed" (and multiple systems care) → Event Grid. If you say "give me all events from the last 6 hours" → Event Hubs.
 
@@ -531,12 +535,13 @@ Azure Kubernetes Service              ← 4 microservices (products, profiles, o
 **If starting over with a smaller team:** Container Apps would eliminate Phases 4.1–4.2 entirely (no node pool management, no AGC setup, no subnet delegation, no feature flag registration). The 4 microservices are stateless HTTP APIs — exactly what Container Apps is designed for.
 
 **What changed in the deployment plan because of this choice:**
+
 - Phase 4.1: AKS cluster creation + workload node pool (7 CLI commands, ~15 min)
 - Phase 4.2: AGC traffic controller + frontend + association (10 CLI commands, ~10 min)
 - Phase 4.2 workarounds: CLI extension cache issues required `az rest` fallbacks
 - Phase 4.2 constraints: Region collocation (AGC must be same region as AKS subnet), subnet delegation
 
-*With Container Apps: a single `az containerapp env create` + 4 × `az containerapp create` — no node pools, no AGC, no subnet delegation.*
+_With Container Apps: a single `az containerapp env create` + 4 × `az containerapp create` — no node pools, no AGC, no subnet delegation._
 
 #### Document Store: Cosmos DB (not PostgreSQL JSONB)
 
@@ -545,6 +550,7 @@ Azure Kubernetes Service              ← 4 microservices (products, profiles, o
 **If the app were single-region:** PostgreSQL Flexible with JSONB columns would work for both product catalog and user profiles. One database engine instead of two (Cosmos DB + SQL), simpler operations, lower cost (~$100/mo for a 2-vCore Flexible server vs ~$200/mo+ for Cosmos DB at 4,000+ RU/s autoscale).
 
 **What Cosmos DB added to the deployment plan:**
+
 - Org-policy workaround: `disableLocalAuth` and `disableKeyBasedMetadataWriteAccess` required `az rest` instead of `az cosmosdb create`
 - Subscription limitation: `isZoneRedundant: true` failed in eastus — required explicit `false` for both regions
 - Two separate database/container hierarchies (productdb + profiledb)
@@ -594,59 +600,59 @@ Every service exposes parameters that architects should treat as first-class con
 
 ### Resilience & Redundancy Parameters
 
-| Parameter | Service | Range | Impact |
-|---|---|---|---|
-| Storage replication | Blob Storage | LRS / ZRS / GRS / GZRS | Durability vs cost vs archive tier availability |
-| Cosmos DB zone redundancy | Cosmos DB | true / false per region | Intra-region HA vs provisioning constraints |
-| Cosmos DB consistency level | Cosmos DB | Strong → Eventual (5 levels) | Read latency vs stale-read risk |
-| Cosmos DB multi-region writes | Cosmos DB | true / false | Write latency vs conflict resolution complexity |
-| Cosmos DB auto-failover | Cosmos DB | true / false | RTO during region outage |
-| Redis replica count | Redis | 0–3 | Read throughput vs cost |
-| Redis availability zones | Redis | 1–3 zones | Intra-region HA |
-| SQL zone redundancy | SQL Database | true / false | Intra-region HA (not available on Serverless) |
+| Parameter                     | Service      | Range                        | Impact                                          |
+| ----------------------------- | ------------ | ---------------------------- | ----------------------------------------------- |
+| Storage replication           | Blob Storage | LRS / ZRS / GRS / GZRS       | Durability vs cost vs archive tier availability |
+| Cosmos DB zone redundancy     | Cosmos DB    | true / false per region      | Intra-region HA vs provisioning constraints     |
+| Cosmos DB consistency level   | Cosmos DB    | Strong → Eventual (5 levels) | Read latency vs stale-read risk                 |
+| Cosmos DB multi-region writes | Cosmos DB    | true / false                 | Write latency vs conflict resolution complexity |
+| Cosmos DB auto-failover       | Cosmos DB    | true / false                 | RTO during region outage                        |
+| Redis replica count           | Redis        | 0–3                          | Read throughput vs cost                         |
+| Redis availability zones      | Redis        | 1–3 zones                    | Intra-region HA                                 |
+| SQL zone redundancy           | SQL Database | true / false                 | Intra-region HA (not available on Serverless)   |
 
 ### Compute Sizing & Autoscaling Parameters
 
-| Parameter | Service | Example Values | Impact |
-|---|---|---|---|
-| Node VM size | AKS | Standard_D4s_v5, Standard_B4ms | CPU/memory per node, cost per node |
-| System pool min/max | AKS | 1 / 3 | Control plane HA vs cost |
-| Workload pool min/max | AKS | 2 / 10 | Burst ceiling vs cost floor |
-| Kubernetes version | AKS | 1.28, 1.29, 1.30 | Feature set, security patches, support window |
-| APIM capacity units | APIM | 1–12 (StandardV2) | ~1,000 req/s per unit |
-| SQL auto-pause delay | SQL Serverless | 60 min (minimum) | Cold-start frequency vs cost |
-| SQL min capacity | SQL Serverless | 0.5–40 vCores | Performance floor during low traffic |
+| Parameter             | Service        | Example Values                 | Impact                                        |
+| --------------------- | -------------- | ------------------------------ | --------------------------------------------- |
+| Node VM size          | AKS            | Standard_D4s_v5, Standard_B4ms | CPU/memory per node, cost per node            |
+| System pool min/max   | AKS            | 1 / 3                          | Control plane HA vs cost                      |
+| Workload pool min/max | AKS            | 2 / 10                         | Burst ceiling vs cost floor                   |
+| Kubernetes version    | AKS            | 1.28, 1.29, 1.30               | Feature set, security patches, support window |
+| APIM capacity units   | APIM           | 1–12 (StandardV2)              | ~1,000 req/s per unit                         |
+| SQL auto-pause delay  | SQL Serverless | 60 min (minimum)               | Cold-start frequency vs cost                  |
+| SQL min capacity      | SQL Serverless | 0.5–40 vCores                  | Performance floor during low traffic          |
 
 ### Data Throughput Parameters
 
-| Parameter | Service | Range | Impact |
-|---|---|---|---|
-| Max autoscale throughput | Cosmos DB | 1,000–1,000,000 RU/s | Cost ceiling, burst capacity |
-| Partition key | Cosmos DB | Custom (per container) | Query efficiency, hot-partition risk |
-| SQL vCores | SQL Serverless | 1–80 | Query parallelism |
-| Redis VM size | Redis | C0–C6 (Standard), P1–P5 (Premium) | Memory, throughput, connections |
-| Redis eviction policy | Redis | allkeys-lru, volatile-lru, noeviction, etc. | Behavior when memory full |
+| Parameter                | Service        | Range                                       | Impact                               |
+| ------------------------ | -------------- | ------------------------------------------- | ------------------------------------ |
+| Max autoscale throughput | Cosmos DB      | 1,000–1,000,000 RU/s                        | Cost ceiling, burst capacity         |
+| Partition key            | Cosmos DB      | Custom (per container)                      | Query efficiency, hot-partition risk |
+| SQL vCores               | SQL Serverless | 1–80                                        | Query parallelism                    |
+| Redis VM size            | Redis          | C0–C6 (Standard), P1–P5 (Premium)           | Memory, throughput, connections      |
+| Redis eviction policy    | Redis          | allkeys-lru, volatile-lru, noeviction, etc. | Behavior when memory full            |
 
 ### Security Parameters
 
-| Parameter | Service | Options | Impact |
-|---|---|---|---|
-| Local auth | Cosmos DB, SQL, Storage, Redis | enabled / disabled | Zero-trust posture |
-| Min TLS version | Storage, Redis | 1.0 / 1.1 / 1.2 | Compliance baseline |
-| WAF mode | Front Door | Prevention / Detection | Blocking vs logging |
-| Rate limit | APIM | calls per renewal period | DDoS protection vs legitimate burst |
-| CORS origins | APIM | URL whitelist | Frontend domain restriction |
-| JWT audience | APIM | URI | Token scope validation |
+| Parameter       | Service                        | Options                  | Impact                              |
+| --------------- | ------------------------------ | ------------------------ | ----------------------------------- |
+| Local auth      | Cosmos DB, SQL, Storage, Redis | enabled / disabled       | Zero-trust posture                  |
+| Min TLS version | Storage, Redis                 | 1.0 / 1.1 / 1.2          | Compliance baseline                 |
+| WAF mode        | Front Door                     | Prevention / Detection   | Blocking vs logging                 |
+| Rate limit      | APIM                           | calls per renewal period | DDoS protection vs legitimate burst |
+| CORS origins    | APIM                           | URL whitelist            | Frontend domain restriction         |
+| JWT audience    | APIM                           | URI                      | Token scope validation              |
 
 ### Observability Parameters
 
-| Parameter | Service | Range | Impact |
-|---|---|---|---|
-| Log retention | Log Analytics | 30–730 days | Investigation window vs cost |
-| Alert window size | Monitor Alerts | PT1M–PT24H | Sensitivity vs noise |
-| Alert evaluation frequency | Monitor Alerts | PT1M–PT1H | Detection speed |
-| SLO thresholds | Monitor Alerts | Custom per metric | Error budget definition |
-| Health probe interval | Front Door | 5–255 seconds | Failure detection speed vs probe load |
+| Parameter                  | Service        | Range             | Impact                                |
+| -------------------------- | -------------- | ----------------- | ------------------------------------- |
+| Log retention              | Log Analytics  | 30–730 days       | Investigation window vs cost          |
+| Alert window size          | Monitor Alerts | PT1M–PT24H        | Sensitivity vs noise                  |
+| Alert evaluation frequency | Monitor Alerts | PT1M–PT1H         | Detection speed                       |
+| SLO thresholds             | Monitor Alerts | Custom per metric | Error budget definition               |
+| Health probe interval      | Front Door     | 5–255 seconds     | Failure detection speed vs probe load |
 
 ---
 
@@ -726,4 +732,4 @@ Before committing to any service combination, answer these questions:
 
 ---
 
-> *This guide is maintained alongside the [executable deployment plan](executable-plan.md) which implements the specific service choices described here using Azure CLI commands.*
+> _This guide is maintained alongside the [executable deployment plan](executable-plan.md) which implements the specific service choices described here using Azure CLI commands._
