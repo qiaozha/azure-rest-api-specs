@@ -14,15 +14,16 @@
 2. [Service Taxonomy: Azure Services by Architectural Category](#2-service-taxonomy-azure-services-by-architectural-category)
 3. [Compute: Where Your Code Runs](#3-compute-where-your-code-runs)
 4. [Database: Where Your Data Lives](#4-database-where-your-data-lives)
-5. [Caching: The Speed Layer](#5-caching-the-speed-layer)
-6. [API Gateway & Ingress: How Traffic Enters](#6-api-gateway--ingress-how-traffic-enters)
-7. [Edge & CDN: The Global Entry Point](#7-edge--cdn-the-global-entry-point)
-8. [Observability: How You See What's Happening](#8-observability-how-you-see-whats-happening)
-9. [Identity & Security: Who Can Do What](#9-identity--security-who-can-do-what)
-10. [Messaging: How Services Talk to Each Other](#10-messaging-how-services-talk-to-each-other)
-11. [Worked Example: Building a Scalable E-Commerce API Platform](#11-worked-example-building-a-scalable-e-commerce-api-platform)
-12. [Parameter Reference: Tunable Knobs Across the Stack](#12-parameter-reference-tunable-knobs-across-the-stack)
-13. [Decision Flowcharts](#13-decision-flowcharts)
+5. [Storage: Unstructured Data](#5-storage-unstructured-data)
+6. [Caching: The Speed Layer](#6-caching-the-speed-layer)
+7. [API Gateway & Ingress: How Traffic Enters](#7-api-gateway--ingress-how-traffic-enters)
+8. [Edge & CDN: The Global Entry Point](#8-edge--cdn-the-global-entry-point)
+9. [Observability: How You See What's Happening](#9-observability-how-you-see-whats-happening)
+10. [Identity & Security: Who Can Do What](#10-identity--security-who-can-do-what)
+11. [Messaging: How Services Talk to Each Other](#11-messaging-how-services-talk-to-each-other)
+12. [Worked Example: Building a Scalable E-Commerce API Platform](#12-worked-example-building-a-scalable-e-commerce-api-platform)
+13. [Parameter Reference: Tunable Knobs Across the Stack](#13-parameter-reference-tunable-knobs-across-the-stack)
+14. [Decision Flowcharts](#14-decision-flowcharts)
 
 ---
 
@@ -122,6 +123,16 @@ Before choosing individual services, understand the full landscape organized by 
 | **Cosmos DB (MongoDB API)**       | BSON documents | RU-based             | Multi-region            | Same 5 levels                |
 | **Cosmos DB for MongoDB (vCore)** | BSON documents | vCore-based (fixed)  | No native multi-region  | MongoDB default              |
 | **Azure Table Storage**           | Key-value      | Per-transaction      | GRS replication         | Eventual                     |
+
+### Storage — Unstructured Data
+
+| Service                          | Data Type                       | Access Tiers                   | Replication            | Max Object Size |
+| -------------------------------- | ------------------------------- | ------------------------------ | ---------------------- | --------------- |
+| **Azure Blob Storage**           | Objects (files, images, videos) | Hot / Cool / Cold / Archive    | LRS / ZRS / GRS / GZRS | 190.7 TiB       |
+| **Azure Data Lake Storage Gen2** | Hierarchical namespace blobs    | Hot / Cool / Cold / Archive    | LRS / ZRS / GRS / GZRS | 190.7 TiB       |
+| **Azure Files**                  | SMB / NFS file shares           | Premium (SSD) / Standard (HDD) | LRS / ZRS / GRS / GZRS | 4 TiB per file  |
+| **Azure NetApp Files**           | Enterprise NFS / SMB shares     | Standard / Premium / Ultra     | Cross-zone (built-in)  | 16 TiB per file |
+| **Azure Managed Lustre**         | HPC parallel file system        | N/A (high-throughput tier)     | Single-zone            | N/A             |
 
 ### Caching
 
@@ -284,7 +295,103 @@ The single most important Cosmos DB design choice — made once, nearly impossib
 
 ---
 
-## 5. Caching: The Speed Layer
+## 5. Storage: Unstructured Data
+
+Most applications need to store data that doesn't fit in a database — images, videos, documents, backups, logs, and data lake files. Azure Storage is the foundational service for this, but the choices within it (account type, access tier, replication, and access pattern) have significant cost and performance implications.
+
+### The Three Storage Personas
+
+| If you need...                                                        | Choose                          | Why                                                              |
+| --------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| Object storage for app assets, backups, or data lake                  | **Blob Storage** (or ADLS Gen2) | Cheapest per-GB, lifecycle policies, tiered access               |
+| Shared file system mounted by VMs or containers (SMB/NFS)             | **Azure Files**                 | Drop-in replacement for on-prem file shares, no app code changes |
+| High-throughput enterprise NFS for SAP, databases, or media rendering | **Azure NetApp Files**          | Sub-ms latency, 4,500 MiB/s throughput, cross-zone HA            |
+
+### Blob Storage: The Default Choice for Unstructured Data
+
+Blob Storage is the workhorse of Azure Storage. Almost every architecture uses it — for static website hosting, media uploads, Terraform state, container images (via ACR on top of it), and data lake analytics.
+
+#### Access Tiers: The Biggest Cost Lever
+
+The single most impactful Blob Storage decision is access tier selection. Storing 10 TB in the wrong tier can cost 5–10x more than necessary:
+
+| Tier        | Storage Cost (per GB/mo) | Read Cost (per 10K ops) | Min Retention | Best For                                       |
+| ----------- | ------------------------ | ----------------------- | ------------- | ---------------------------------------------- |
+| **Hot**     | ~$0.018                  | ~$0.004                 | None          | Frequently accessed data (app assets, uploads) |
+| **Cool**    | ~$0.010                  | ~$0.01                  | 30 days       | Infrequent reads (monthly reports, old logs)   |
+| **Cold**    | ~$0.0036                 | ~$0.01                  | 90 days       | Rare reads (quarterly compliance data)         |
+| **Archive** | ~$0.00099                | ~$5.00 (rehydrate)      | 180 days      | Long-term retention (legal, regulatory)        |
+
+_Prices are illustrative (East US, LRS). Archive reads require rehydration (hours to days)._
+
+**Rule of thumb:** Use lifecycle management policies to automatically transition blobs from Hot → Cool → Cold → Archive based on last-access time. This is free to configure and can cut storage costs by 60–80% for aging data.
+
+#### Replication: Durability vs Cost vs Recovery
+
+| Replication | Durability | Protects Against       | Monthly Cost Premium | Use When                          |
+| ----------- | ---------- | ---------------------- | -------------------- | --------------------------------- |
+| **LRS**     | 11 nines   | Drive/rack failure     | Baseline             | Dev/test, reproducible data       |
+| **ZRS**     | 12 nines   | Zone failure           | ~1.25x LRS           | Production, single-region HA      |
+| **GRS**     | 16 nines   | Region failure (async) | ~2x LRS              | DR with RPO of ~15 min            |
+| **GZRS**    | 16 nines   | Zone + region failure  | ~2.5x LRS            | Mission-critical, multi-region DR |
+
+**Key nuance:** GRS replicates asynchronously to a paired region with ~15-minute RPO. During a regional outage, failover to the secondary is **manual** (you initiate it) unless you use RA-GRS/RA-GZRS, which provides **read-only** access to the secondary at all times.
+
+### Azure Data Lake Storage Gen2
+
+ADLS Gen2 is not a separate service — it's Blob Storage with **hierarchical namespace** (HNS) enabled. This adds POSIX-like directory semantics, ACLs, and atomic directory operations.
+
+**Use ADLS Gen2 when:**
+
+- You're building a **data lake** (Spark, Databricks, Synapse Analytics)
+- You need **directory-level ACLs** for multi-team data governance
+- You need **atomic rename** on directories (critical for Spark job commits)
+
+**Skip ADLS Gen2 when:**
+
+- You're just storing app blobs (images, documents) — standard Blob Storage is simpler
+- You don't need hierarchical directory operations
+
+**Cost nuance:** Enabling HNS adds a small per-directory cost and changes some pricing tiers. For pure object storage without analytics, standard Blob Storage is marginally cheaper.
+
+### Azure Files: When You Need a File Share
+
+Azure Files provides fully managed SMB (Windows) and NFS (Linux) file shares. It replaces on-prem file servers without changing application code.
+
+#### When Azure Files Makes Sense
+
+- **Lift-and-shift** workloads expecting a UNC path (`\\server\share`) or NFS mount
+- **Shared configuration** across multiple VMs or containers (e.g., shared config files, certificate stores)
+- **AKS persistent volumes** via the Azure Files CSI driver (simpler than Azure Disk for ReadWriteMany)
+
+#### Azure Files vs Azure NetApp Files
+
+| Factor               | Azure Files (Premium)    | Azure NetApp Files               |
+| -------------------- | ------------------------ | -------------------------------- |
+| Protocol             | SMB 3.x / NFS 4.1        | NFS 3/4.1 / SMB 3.x              |
+| Latency              | ~1–2 ms                  | Sub-ms (~0.2–0.5 ms)             |
+| Max throughput       | ~10 GiB/s (large shares) | Up to 4,500 MiB/s (Ultra)        |
+| Min provisioned size | 100 GiB                  | 2 TiB (Standard), 1 TiB (others) |
+| Cost model           | Per-GiB provisioned      | Per-GiB provisioned (higher)     |
+| Best for             | General file shares      | SAP, databases, HPC, media       |
+
+**Decision heuristic:** Start with Azure Files. Move to Azure NetApp Files only when latency (< 1 ms) or throughput (> 10 GiB/s) requirements exceed Azure Files Premium capabilities.
+
+### Storage Security: The Identity-Based Access Model
+
+Storage is one of the first services where teams should adopt **zero-secret access** (see Section 10):
+
+| Access Method            | When to Use                                                   | Risk Level  |
+| ------------------------ | ------------------------------------------------------------- | ----------- |
+| **Managed Identity**     | App-to-storage (production)                                   | Lowest      |
+| **SAS tokens**           | Time-limited external access (signed URLs for file downloads) | Medium      |
+| **Storage account keys** | Never in production (legacy, high-risk)                       | **Highest** |
+
+**Recommendation:** Disable storage account key access entirely (`allowSharedKeyAccess: false`) and use Entra ID + RBAC for all access. Generate SAS tokens (signed with user delegation keys, not account keys) only for external/temporary access scenarios.
+
+---
+
+## 6. Caching: The Speed Layer
 
 Caching decisions are medium-reversibility but high-cost-impact. The question isn't just "do we need a cache?" but "at which layer should caching happen?"
 
@@ -338,7 +445,7 @@ Each layer has different characteristics:
 
 ---
 
-## 6. API Gateway & Ingress: How Traffic Enters
+## 7. API Gateway & Ingress: How Traffic Enters
 
 The API gateway question often conflates two different concerns: **traffic management** (L7 routing, load balancing, TLS termination) and **API lifecycle management** (rate limiting, developer portal, subscription keys, policies).
 
@@ -381,7 +488,7 @@ The API gateway question often conflates two different concerns: **traffic manag
 
 ---
 
-## 7. Edge & CDN: The Global Entry Point
+## 8. Edge & CDN: The Global Entry Point
 
 ### Front Door Premium vs Standard vs Application Gateway
 
@@ -405,7 +512,7 @@ For a single-region app with no CDN needs, Application Gateway WAF v2 is often t
 
 ---
 
-## 8. Observability: How You See What's Happening
+## 9. Observability: How You See What's Happening
 
 ### The Azure Monitor Stack
 
@@ -446,7 +553,7 @@ Azure Monitor
 
 ---
 
-## 9. Identity & Security: Who Can Do What
+## 10. Identity & Security: Who Can Do What
 
 ### Entra ID as the Central Identity Plane
 
@@ -477,7 +584,7 @@ A commonly debated decision:
 
 ---
 
-## 10. Messaging: How Services Talk to Each Other
+## 11. Messaging: How Services Talk to Each Other
 
 ### The Missing Layer in Many Architectures
 
@@ -502,7 +609,7 @@ These three services are often confused. They serve fundamentally different patt
 
 ---
 
-## 11. Worked Example: Building a Scalable E-Commerce API Platform
+## 12. Worked Example: Building a Scalable E-Commerce API Platform
 
 To ground these concepts, here's how the decisions play out for a real reference architecture: a **scalable e-commerce API platform** with product browsing, user profiles, order management, and content delivery.
 
@@ -594,7 +701,7 @@ The critical insight: **observability (Phase 2) must deploy before everything el
 
 ---
 
-## 12. Parameter Reference: Tunable Knobs Across the Stack
+## 13. Parameter Reference: Tunable Knobs Across the Stack
 
 Every service exposes parameters that architects should treat as first-class configuration — not implementation details buried in CLI commands.
 
@@ -656,7 +763,7 @@ Every service exposes parameters that architects should treat as first-class con
 
 ---
 
-## 13. Decision Flowcharts
+## 14. Decision Flowcharts
 
 ### "Which compute platform should I use?"
 
